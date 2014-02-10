@@ -32,26 +32,36 @@ public interface IOHandler {
      * and this io-handler has beenregistered to react to this event.
      * @param sk the SelectionKey of the SocketChannel ready for connecting
      */
-    void connect(SelectionKey sk);
+    void connect();
 
     /**
      * Triggered if a SocketChannel has data ready for reading  
      * and this io-handler has beenregistered to react to this event.
      * @param buf the ByteBuffer containing data read from the socket
      */
-    void read(SelectionKey sk);
+    void read();
 
     /**
      * Triggered if a SocketChannel is ready for writing  
      * and this io-handler has beenregistered to react to this event.
      * @param sc the SocketChannel ready for writing
      */
-    void write(SelectionKey sk);
+    void write();
 
     /**
      * Triggered if a selection-key has been invalidated for some reason.
      * (e.g. connection closed by remote host)
      * @param sk the SelectionKey which is not valid anymore
      */
-    void cleanup(SelectionKey sk);
+    void cleanup();
+    
+    /**
+     * Sets the SelectionKey associated with this handler
+     */
+    void setSelectionKey (SelectionKey sk);
+    
+    /**
+     * Returns the interstOps of this handler
+     */
+    int getInterestSet();
 }

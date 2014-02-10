@@ -52,4 +52,9 @@ public interface IPoller {
      * @throws IOException
      */
     public void addHandler(IOHandler ioh, SocketChannel sc) throws IOException;
+    
+    /**
+     * Shuts down this IPoller closing down all connections, closing the selector and finally suspending
+     */
+    public void shutdown();
 }
