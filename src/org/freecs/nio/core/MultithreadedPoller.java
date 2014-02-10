@@ -107,4 +107,13 @@ public class MultithreadedPoller implements IPoller {
             i.next().startPoller();
         }
     }
+
+    /**
+     * Shutdown all underlying pollers
+     */
+    public void shutdown() {
+        for (int i = 0; i < this.pollers.length; i++) {
+            this.pollers[i].shutdown();
+        }
+    }
 }
