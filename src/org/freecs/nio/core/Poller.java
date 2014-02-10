@@ -69,7 +69,6 @@ public class Poller implements Runnable, IPoller {
             regListIoh.add(ioh);
             regListSc.add(sc);
         }
-        // return sc.register(sel, ioh.getInterestOp(), ioh);
     }
 
     public static final IOHandler[] ioArr = new IOHandler[0];
@@ -89,7 +88,11 @@ public class Poller implements Runnable, IPoller {
                 }
                 for (int i = 0; i < iohs.length; i++) {
                     try {
-                        scs[i].register(sel, SelectionKey.OP_READ, iohs[i]);
+                        SelectionKey sk = scs[i].register(sel, iohs[i].getInterestSet(), iohs[i]);
+                        iohs[i].setSelectionKey(sk);
+                        if ((iohs[i].getInterestSet() & SelectionKey.OP_CONNECT) != 0 && scs[i].isConnected()) {
+                            iohs[i].connect();
+                        }
                     } catch (ClosedChannelException e) {
                         e.printStackTrace();
                     }
@@ -110,7 +113,7 @@ public class Poller implements Runnable, IPoller {
                 IOHandler ioh = (IOHandler) sk.attachment();
                 try {
                     if (!sk.isValid()) {
-                        ioh.cleanup(sk);
+                        ioh.cleanup();
                         continue;
                     }
                     if (sk.isAcceptable()) {
@@ -118,29 +121,42 @@ public class Poller implements Runnable, IPoller {
                         SocketChannel sc = ssc.accept();
                         if (sc!=null) {
                             sc.configureBlocking(false);
-                            ((IOHandler) sk.attachment()).accept(sc);
+                            ioh.accept(sc);
                         }
                         continue;
                     }
                     if (sk.isConnectable()) {
-                        ((IOHandler) sk.attachment()).connect(sk);
+                        ioh.connect();
                         continue;
                     }
                     if (sk.isReadable()) {
-                        ioh.read(sk);
+                        ioh.read();
                     }
                     if (sk.isWritable()) {
-                        ioh.write(sk);
+                        ioh.write();
                     }
                 } catch (IOException ioe) {
-                    ioh.cleanup(sk);
+                    ioh.cleanup();
                 } catch (CancelledKeyException cke) {
                     // happens... remotely or locally closed connection for example
-                    ioh.cleanup(sk);
+                    ioh.cleanup();
                 } finally {
                     i.remove();
                 }
             }
+        }
+        for (Iterator<SelectionKey> i = sel.keys().iterator(); i.hasNext(); ) {
+            SelectionKey sk = i.next();
+            try {
+                sk.channel().close();
+            } catch (IOException e) {
+                // ignore.. we are shutting down anyways
+            }
+        }
+        try {
+            sel.close();
+        } catch (IOException e) {
+            // ignore.. we are shutting down anyways
         }
     }
     
