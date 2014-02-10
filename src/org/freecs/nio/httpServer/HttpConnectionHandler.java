@@ -31,6 +31,7 @@ public class HttpConnectionHandler implements IOHandler {
     private final ByteBuffer buff;
     private final HttpRequestParser hrp;
     private LinkedList<HttpResponse> responseQueue = new LinkedList<HttpResponse>();
+    private SelectionKey sk = null;
 
     private KeepAliveState kas = null;
     
@@ -44,20 +45,20 @@ public class HttpConnectionHandler implements IOHandler {
 
     public void accept(SocketChannel sc) { return; } // nothing to accept (it's an already established connection)
 
-    public void connect(SelectionKey sk) { return; } // connect is only used by clients wanting to connect to a server
+    public void connect() { return; } // connect is only used by clients wanting to connect to a server
 
     /**
      * Read new Data from the given SelectionKey and delegate the parsing to it's HttpRequestParser and
      * adding the generated HttpResponse to it's responseQueue.
      */
-    public void read(SelectionKey sk) {
+    public void read() {
         if (kas==null) {
             kas = new KeepAliveState(sk);
         }
         kas.updateIfListed();
         try {
             if (((SocketChannel) sk.channel()).read(buff) == -1) {
-                this.cleanup(sk);
+                this.cleanup();
                 return;
             }
             buff.flip();
@@ -77,7 +78,7 @@ public class HttpConnectionHandler implements IOHandler {
                 this.addResponse(sk, HttpResponse.CloseConnection);
             }
         } catch (IOException e) {
-            this.cleanup(sk);
+            this.cleanup();
         }
     }
 
@@ -85,13 +86,13 @@ public class HttpConnectionHandler implements IOHandler {
      * Take the next HttpResponse from the stack, write it to the SelectionKey's SocketChannel
      * and remove it from the queue if it has been fully written.
      */
-    public void write(SelectionKey sk) {
+    public void write() {
         try {
             SocketChannel sc = (SocketChannel) sk.channel();
             while (!responseQueue.isEmpty()) {
                 HttpResponse hr = responseQueue.getFirst();
                 if (hr == HttpResponse.CloseConnection) {
-                    this.cleanup(sk);
+                    this.cleanup();
                     return;
                 }
                 if (sc.write(hr.buff) < 1) {
@@ -105,7 +106,7 @@ public class HttpConnectionHandler implements IOHandler {
         } catch (IOException e) {
             // TODO Auto-generated catch block
             e.printStackTrace();
-            this.cleanup(sk);
+            this.cleanup();
         }
     }
 
@@ -113,7 +114,7 @@ public class HttpConnectionHandler implements IOHandler {
      * Cleanup by canceling the given SelectionKey, deregistering KeepAliveState
      * from HttpKeepAliveTracker if neccesary and trying to close the channel.
      */
-    public void cleanup(SelectionKey sk) {
+    public void cleanup() {
         sk.cancel();
         if (this.kas != null)
             HttpKeepAliveTracker.instance.remove(this.kas);
@@ -140,5 +141,15 @@ public class HttpConnectionHandler implements IOHandler {
 
     public boolean equals(Object obj) {
         return this == obj;
+    }
+
+    @Override
+    public void setSelectionKey(SelectionKey sk) {
+        this.sk = sk;
+    }
+
+    @Override
+    public int getInterestSet() {
+        return SelectionKey.OP_READ;
     }
 }

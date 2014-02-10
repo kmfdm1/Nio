@@ -29,6 +29,7 @@ import org.freecs.nio.interfaces.IPoller;
 
 public class HttpRequestListener implements IOHandler {
     private final IPoller poller;
+    private SelectionKey sk = null;
     
     @SuppressWarnings("unused")
     private HttpRequestListener() { poller=null; }
@@ -38,7 +39,7 @@ public class HttpRequestListener implements IOHandler {
     }
 
     /**
-     * Wrapp the given SocketChannel within a HttpConnectionHandler and
+     * Wrap the given SocketChannel within a HttpConnectionHandler and
      * add this handler to the IPoller
      */
     public void accept(SocketChannel sc) {
@@ -51,14 +52,14 @@ public class HttpRequestListener implements IOHandler {
         }
     }
 
-    public void connect(SelectionKey sk) { return; } // connect is only used by clients wanting to connect to a server
-    public void read(SelectionKey sk) { return; } // listeners don't read
-    public void write(SelectionKey sk) { return; } // listeners don't write
+    public void connect() { return; } // connect is only used by clients wanting to connect to a server
+    public void read() { return; } // listeners don't read
+    public void write() { return; } // listeners don't write
 
     /**
      * Cancel the SelecitonKey, and close the Channel
      */
-    public void cleanup(SelectionKey sk) {
+    public void cleanup() {
         sk.cancel();
         try {
             sk.channel().close();
@@ -66,5 +67,19 @@ public class HttpRequestListener implements IOHandler {
             e.printStackTrace();
         }
         return;
+    }
+
+    /**
+     * Sets the selectionkey associated with this IOHandler
+     */
+    public void setSelectionKey(SelectionKey sk) {
+        this.sk = sk;
+    }
+
+    /**
+     * Returns the interestOps this IOHandler is interested in
+     */
+    public int getInterestSet() {
+        return SelectionKey.OP_ACCEPT;
     }
 }
